@@ -108,6 +108,59 @@ list *sort(list *start, int size, int S)
 }
 
 
+
+list *sort_slow(list *start)
+{
+    if (!start || !start->addr)
+        return start;
+
+    list *left = start, *right = start->addr;
+    left->addr = NULL;
+    right->addr = XOR(right->addr, left);
+
+    left = sort_slow(left);
+    right = sort_slow(right);
+
+
+    for (list *merge = NULL; left || right;) {
+        if (!right || (left && left->data < right->data)) {
+            list *next = left->addr;
+            if (next)
+                next->addr = XOR(left, next->addr);
+
+            if (!merge) {
+                start = merge = left;
+                merge->addr = NULL;
+            } else {
+                // LL1
+                merge->addr = XOR(merge->addr, left);
+                // LL2
+                left->addr = merge;
+                merge = left;
+            }
+            left = next;
+        } else {
+            list *next = right->addr;
+            if (next)
+                next->addr = XOR(right, next->addr);
+
+            if (!merge) {
+                start = merge = right;
+                merge->addr = NULL;
+            } else {
+                // RR1
+                merge->addr = XOR(merge->addr, right);
+                // RR2
+                right->addr = merge;
+                merge = right;
+            }
+            right = next;
+        }
+    }
+
+    return start;
+}
+
 void bubble_sort(list *head, int count)
 {
     int i, j, swapped;
@@ -168,17 +221,23 @@ int main()
     struct timespec t1, t2;
     time_t t;
     srand((unsigned) time(&t));
-    list *mylist = NULL;
-    for (int i = 0; i < 100000; i++)
-        insert_node(&(mylist), (rand() % 10000));
-    for (int i = 0; i < 1000; i++) {
+
+    for (int i = 1; i <= 10000; i++) {
         list *mylist = NULL;
-        for (int i = 0; i < 100000; i++)
+        for (int j = 0; j < i; j++)
             insert_node(&(mylist), (rand() % 10000));
         clock_gettime(CLOCK_REALTIME, &t1);
-        best_S(mylist, i);
+        sort(mylist, i,0);
         clock_gettime(CLOCK_REALTIME, &t2);
         fprintf(diff, "%d ", i);
+        fprintf(diff, "%ld ", diff_ns(t1, t2));
+
+        mylist = NULL;
+        for (int j = 0; j < i; j++)
+            insert_node(&(mylist), (rand() % 10000));
+        clock_gettime(CLOCK_REALTIME, &t1);
+        sort_slow(mylist);
+        clock_gettime(CLOCK_REALTIME, &t2);
         fprintf(diff, "%ld \n", diff_ns(t1, t2));
     }
     return 0;
